@@ -1,0 +1,14 @@
+{
+  "skill1": {
+    "total_runs": 0
+  },
+  "skill2": {
+    "total_runs": 1,
+    "avg_tokens": 0,
+    "last_run": "2026-02-03T10:03:51.837Z"
+  },
+  "skill3": {
+    "total_runs": 0,
+    "approval_rate": 0
+  }
+}
