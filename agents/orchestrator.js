@@ -159,21 +159,45 @@ class Orchestrator {
     logger.info(`[${name}] 最新批次 ${records.length} 条，未评分 ${unrated.length} 条`);
 
     // Step 2: Skill2 两阶段生成（传入偏好上下文）
-    const recommendations = await skill2.process(unrated, name, preferenceContext);
+    let recommendations = await skill2.process(unrated, name, preferenceContext);
 
-    // Step 3: 过滤高/中适配 + Skill3 审核
-    const highMidTopics = recommendations.filter(t => t.rating === "高" || t.rating === "中");
+    // Step 3: 过滤高/中适配
+    let highMidTopics = recommendations.filter(t => t.rating === "高" || t.rating === "中");
     const lowTopics = recommendations.filter(t => t.rating === "低");
 
     logger.info(`[${name}] 适配度筛选: 高/中 ${highMidTopics.length} 条, 低 ${lowTopics.length} 条（低适配将跳过）`);
 
-    let approved = highMidTopics;
+    // Step 3.1: Skill3 金句审核（最多2次重试）
     if (highMidTopics.length > 0) {
-      const review = await skill3.review(highMidTopics, name);
+      const maxQuoteRetries = 2;
+      let quoteAttempt = 0;
+      let quoteReview = null;
 
-      // 反馈循环（简化版：只记录反馈，不重新生成）
-      if (!review.approved && config.recommendation.maxRetries > 0) {
-        logger.warn(`[${name}] 审核未通过，本次仍采用当前结果（未来可添加重试）`);
+      while (quoteAttempt <= maxQuoteRetries) {
+        quoteReview = await skill3.reviewQuotes(highMidTopics, name);
+
+        if (quoteReview.approved) {
+          break; // 审核通过，跳出循环
+        }
+
+        quoteAttempt++;
+        if (quoteAttempt <= maxQuoteRetries) {
+          logger.warn(`[${name}] 金句审核未通过，重新生成（第 ${quoteAttempt}/${maxQuoteRetries} 次重试）`);
+          // 重新生成金句（只针对有问题的选题）
+          const issuesTitles = new Set(quoteReview.issues?.map(i => i.title) || []);
+          const topicsToRegenerate = highMidTopics.filter(t => issuesTitles.has(t.title));
+
+          if (topicsToRegenerate.length > 0) {
+            logger.info(`[${name}] 重新生成 ${topicsToRegenerate.length} 条金句`);
+            const regenerated = await skill2.generateQuotes(topicsToRegenerate, name);
+
+            // 合并结果（替换重新生成的选题）
+            const regeneratedMap = new Map(regenerated.map(t => [t.title, t]));
+            highMidTopics = highMidTopics.map(t => regeneratedMap.get(t.title) || t);
+          }
+        } else {
+          logger.warn(`[${name}] 金句审核达到最大重试次数，仍采用当前结果`);
+        }
       }
     }
 
@@ -242,7 +266,63 @@ class Orchestrator {
     if (poolRecords.length) {
       // Step 4: Skill4 - 为高适配选题生成完整脚本
       logger.info(`[${name}] 调用 Skill4 生成完整脚本...`);
-      const enrichedRecords = await skill4.batchGenerate(poolRecords);
+      let enrichedRecords = await skill4.batchGenerate(poolRecords);
+
+      // Step 4.1: Skill3 脚本审核（最多3次重试）
+      const maxScriptRetries = 3;
+      let scriptAttempt = 0;
+      let scriptReview = null;
+
+      // 提取用于审核的数据（包含脚本的高适配选题）
+      const scriptsToReview = enrichedRecords
+        .filter(r => r.fields["完整脚本"])
+        .map(r => ({
+          title: r.fields["标题"],
+          quote: r.fields["老李金句"],
+          fullScript: r.fields["完整脚本"],
+          wordplay: r.fields["文字梗"] || "",
+        }));
+
+      while (scriptAttempt <= maxScriptRetries && scriptsToReview.length > 0) {
+        scriptReview = await skill3.reviewScripts(scriptsToReview, name);
+
+        if (scriptReview.approved) {
+          break; // 审核通过，跳出循环
+        }
+
+        scriptAttempt++;
+        if (scriptAttempt <= maxScriptRetries) {
+          logger.warn(`[${name}] 脚本审核未通过，重新生成（第 ${scriptAttempt}/${maxScriptRetries} 次重试）`);
+
+          // 重新生成脚本（只针对有问题的选题）
+          const issuesTitles = new Set(scriptReview.issues?.map(i => i.title) || []);
+          const recordsToRegenerate = enrichedRecords.filter(r => issuesTitles.has(r.fields["标题"]));
+
+          if (recordsToRegenerate.length > 0) {
+            logger.info(`[${name}] 重新生成 ${recordsToRegenerate.length} 条脚本`);
+            const regeneratedRecords = await skill4.batchGenerate(recordsToRegenerate);
+
+            // 合并结果（替换重新生成的记录）
+            const regeneratedMap = new Map(regeneratedRecords.map(r => [r.fields["标题"], r]));
+            enrichedRecords = enrichedRecords.map(r => regeneratedMap.get(r.fields["标题"]) || r);
+
+            // 更新待审核列表
+            scriptsToReview.length = 0;
+            enrichedRecords
+              .filter(r => r.fields["完整脚本"])
+              .forEach(r => {
+                scriptsToReview.push({
+                  title: r.fields["标题"],
+                  quote: r.fields["老李金句"],
+                  fullScript: r.fields["完整脚本"],
+                  wordplay: r.fields["文字梗"] || "",
+                });
+              });
+          }
+        } else {
+          logger.warn(`[${name}] 脚本审核达到最大重试次数，仍采用当前结果`);
+        }
+      }
 
       // Step 5: 写入选题池（包含完整脚本）
       poolAdded = await bitable.writeToPool(enrichedRecords);
