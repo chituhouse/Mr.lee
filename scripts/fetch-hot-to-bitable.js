@@ -167,6 +167,7 @@ async function processPlatform(platform) {
   const lastMap = buildMap(lastBatch);
 
   const now = Date.now();
+  const batchId = new Date(now).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false });
   console.log(`[${name}] 当前 ${items.length} 条, 上轮 ${lastMap.size} 条, 今日首轮 ${firstMap.size} 条`);
 
   // 4. 计算增长并构建记录
@@ -188,7 +189,7 @@ async function processPlatform(platform) {
       newCount++;
     } else {
       growth = hot - (prev.hot || 0);
-      rankChange = (prev.rank || rank) - rank; // 正数=上升（比如从10到5=+5）
+      rankChange = (prev.rank || rank) - rank;
       if (growth > 0) { status = "上升"; upCount++; }
       else if (growth < 0) { status = "下降"; downCount++; }
       else { status = "持平"; steadyCount++; }
@@ -203,8 +204,12 @@ async function processPlatform(platform) {
       "排名": rank,
       "热度": hot,
       "状态": status,
+      "来源平台": name,
+      "摘要": item.desc || "",
       "链接": { link: item.url, text: item.title },
+      "移动端链接": item.mobileUrl || "",
       "抓取时间": now,
+      "采集批次": batchId,
     };
     if (growth !== null) fields["增长值"] = growth;
     if (rankChange !== null) fields["排名变化"] = rankChange;
