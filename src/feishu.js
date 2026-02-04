@@ -73,6 +73,9 @@ class FeishuClient {
 
       console.log(`[Feishu] Message from ${chatId}: ${text.substring(0, 80)}`);
 
+      // 检查是否有待发送的系统通知
+      await this._checkPendingNotifications(messageId);
+
       await this._addReaction(messageId, "OnIt");
 
       const existingSessionId = this.session.get(chatId);
@@ -151,6 +154,26 @@ class FeishuClient {
       remaining = remaining.substring(splitAt).trimStart();
     }
     return chunks;
+  }
+
+  async _checkPendingNotifications(messageId) {
+    const fs = require("fs");
+    const path = require("path");
+    const notificationPath = path.join(__dirname, "..", "data", "pending-notification.json");
+
+    try {
+      if (fs.existsSync(notificationPath)) {
+        const notification = JSON.parse(fs.readFileSync(notificationPath, "utf-8"));
+        if (!notification.read) {
+          console.log("[Feishu] 发送系统通知:", notification.title);
+          await this._reply(messageId, notification.message);
+          // 标记为已读并删除通知文件
+          fs.unlinkSync(notificationPath);
+        }
+      }
+    } catch (err) {
+      console.warn("[Feishu] 检查通知失败:", err.message);
+    }
   }
 }
 
