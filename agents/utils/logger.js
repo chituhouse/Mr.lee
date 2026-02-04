@@ -12,6 +12,7 @@ class Logger {
   warn(message, meta) { this.log("warn", message, meta); }
   error(message, meta) { this.log("error", message, meta); }
   success(message, meta) { this.log("✓", message, meta); }
+  debug(message, meta) { this.log("debug", message, meta); }
 }
 
 module.exports = new Logger();
