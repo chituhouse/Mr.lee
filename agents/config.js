@@ -3,7 +3,7 @@ module.exports = {
   claude: {
     baseUrl: process.env.ANTHROPIC_BASE_URL || "https://aicoding.api.zeroclover.io",
     apiKey: process.env.ANTHROPIC_AUTH_TOKEN,
-    model: process.env.RECOMMEND_MODEL || "claude-sonnet-4-20250514",
+    model: process.env.RECOMMEND_MODEL || "claude-sonnet-4-5-20250929",
   },
   
   // Bitable

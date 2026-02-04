@@ -21,7 +21,7 @@ const POOL_TABLE = process.env.TOPIC_POOL_TABLE_ID;
 
 const API_URL = (process.env.ANTHROPIC_BASE_URL || "https://aicoding.api.zeroclover.io") + "/v1/messages";
 const API_KEY = process.env.ANTHROPIC_AUTH_TOKEN;
-const MODEL = process.env.RECOMMEND_MODEL || "claude-sonnet-4-20250514";
+const MODEL = process.env.RECOMMEND_MODEL || "claude-sonnet-4-5-20250929";
 const MAX_RETRIES = 1; // 降低重试次数，节省 API 调用
 
 const ALL_PLATFORMS = [

@@ -11,8 +11,8 @@ async function loadSDK() {
 }
 
 const MCP_BITABLE_SERVER = {
-  command: "/home/linuxbrew/.linuxbrew/bin/node",
-  args: ["/home/jarvis/jarvis-gateway/src/mcp-bitable.mjs"],
+  command: process.env.MCP_NODE_PATH || "/home/linuxbrew/.linuxbrew/bin/node",
+  args: [process.env.MCP_BITABLE_PATH || __dirname + "/mcp-bitable.mjs"],
 };
 
 class ClaudeClient {
