@@ -42,7 +42,7 @@ async function getCurrentPrompts() {
     url: `/open-apis/bitable/v1/apps/${APP_TOKEN}/tables/${TABLE_ID}/records/search`,
     data: {
       page_size: 500,
-      field_names: ["Skill名称", "Prompt类型", "Prompt内容", "版本号", "record_id"],
+      field_names: ["Skill名称", "Prompt类型", "Prompt内容", "版本号"],
     },
   });
 
@@ -57,7 +57,7 @@ async function getCurrentPrompts() {
     const key = `${skillName}:${promptType}`;
 
     prompts.set(key, {
-      record_id: item.record_id,
+      record_id: item.record_id, // record_id 是 item 的属性，不是 fields 中的字段
       skillName,
       promptType,
       content: extractText(item.fields["Prompt内容"]),
