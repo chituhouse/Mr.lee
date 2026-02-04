@@ -202,12 +202,8 @@ async function processPlatform(platform) {
       "排名": rank,
       "热度": hot,
       "状态": status,
-      "来源平台": name,
-      "摘要": item.desc || "",
       "链接": { link: item.url, text: item.title },
-      "移动端链接": item.mobileUrl || "",
       "抓取时间": now,
-      "采集批次": batchId,
     };
     if (growth !== null) fields["增长值"] = growth;
     if (rankChange !== null) fields["排名变化"] = rankChange;
