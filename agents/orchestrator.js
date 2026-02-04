@@ -25,8 +25,6 @@ class Orchestrator {
       { name: "微博", route: "weibo", tableId: config.bitable.tables.weibo },
       { name: "抖音", route: "douyin", tableId: config.bitable.tables.douyin },
       { name: "今日头条", route: "toutiao", tableId: config.bitable.tables.toutiao },
-      { name: "知乎", route: "zhihu", tableId: config.bitable.tables.zhihu },
-      { name: "哔哩哔哩", route: "bilibili", tableId: config.bitable.tables.bilibili },
     ];
     this.retrospective = new RetrospectiveAnalyzer();
   }
@@ -163,20 +161,23 @@ class Orchestrator {
     // Step 2: Skill2 两阶段生成（传入偏好上下文）
     const recommendations = await skill2.process(unrated, name, preferenceContext);
 
-    // Step 3: 过滤高适配 + Skill3 审核
-    const highTopics = recommendations.filter(t => t.rating === "高");
-    
-    let approved = highTopics;
-    if (highTopics.length > 0) {
-      const review = await skill3.review(highTopics, name);
-      
+    // Step 3: 过滤高/中适配 + Skill3 审核
+    const highMidTopics = recommendations.filter(t => t.rating === "高" || t.rating === "中");
+    const lowTopics = recommendations.filter(t => t.rating === "低");
+
+    logger.info(`[${name}] 适配度筛选: 高/中 ${highMidTopics.length} 条, 低 ${lowTopics.length} 条（低适配将跳过）`);
+
+    let approved = highMidTopics;
+    if (highMidTopics.length > 0) {
+      const review = await skill3.review(highMidTopics, name);
+
       // 反馈循环（简化版：只记录反馈，不重新生成）
       if (!review.approved && config.recommendation.maxRetries > 0) {
         logger.warn(`[${name}] 审核未通过，本次仍采用当前结果（未来可添加重试）`);
       }
     }
 
-    // Step 4: 写回 Bitable
+    // Step 4: 写回 Bitable（只处理高/中，低适配只写适配度）
     const updates = [];
     const poolRecords = [];
     const counts = { high: 0, mid: 0, low: 0 };
@@ -185,20 +186,34 @@ class Orchestrator {
       const rec = recommendations.find(r => r.title === record.title);
       if (!rec) continue;
 
+      // 低适配度：只写适配度，不生成其他内容
+      if (rec.rating === "低") {
+        updates.push({
+          record_id: record.record_id,
+          fields: {
+            "适配度（Claude）": rec.rating,
+          },
+        });
+        counts.low++;
+        continue; // 跳过后续处理
+      }
+
+      // 高/中适配度：写完整内容
       updates.push({
         record_id: record.record_id,
         fields: {
-          "适配度": rec.rating,
-          "推荐理由": rec.reason || "",
-          "老李金句": rec.quote || "",
+          "适配度（Claude）": rec.rating,
+          "推荐理由（Claude）": rec.reason || "",
+          "老李金句（Claude）": rec.quote || "",
+          // 文字梗暂时为空，Skill2目前不生成文字梗
+          "文字梗（Claude）": "",
         },
       });
 
       if (rec.rating === "高") counts.high++;
       else if (rec.rating === "中") counts.mid++;
-      else counts.low++;
 
-      // 高适配 + 不在选题池 → 写入
+      // 只有高适配 + 有金句 + 不在选题池 → 写入选题池
       if (rec.rating === "高" && rec.quote && !poolTitles.has(name + "|" + record.title)) {
         const linkUrl = record.link?.link || "";
         poolRecords.push({

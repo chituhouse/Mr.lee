@@ -32,7 +32,7 @@ class BitableClient {
       data: {
         sort: [{ field_name: "抓取时间", desc: true }],
         page_size: 200,
-        field_names: ["标题", "排名", "热度", "增长值", "状态", "适配度", "链接", "抓取时间"],
+        field_names: ["标题", "排名", "热度", "增长值", "状态", "适配度（Claude）", "链接", "抓取时间"],
       },
     });
     
@@ -45,7 +45,7 @@ class BitableClient {
       hot: r.fields["热度"] || 0,
       growth: r.fields["增长值"] || 0,
       status: this.extractText(r.fields["状态"]),
-      rating: this.extractText(r.fields["适配度"]),
+      rating: this.extractText(r.fields["适配度（Claude）"]),
       link: r.fields["链接"],
       time: r.fields["抓取时间"],
     }));

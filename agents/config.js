@@ -14,8 +14,6 @@ module.exports = {
       weibo: process.env.WEIBO_TABLE_ID,
       douyin: process.env.DOUYIN_TABLE_ID,
       toutiao: process.env.TOUTIAO_TABLE_ID,
-      zhihu: process.env.ZHIHU_TABLE_ID,
-      bilibili: process.env.BILIBILI_TABLE_ID,
     }
   },
   

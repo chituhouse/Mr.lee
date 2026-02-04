@@ -30,8 +30,6 @@ const PLATFORMS = [
   { name: "微博",     route: "weibo",    tableId: process.env.WEIBO_TABLE_ID },
   { name: "抖音",     route: "douyin",   tableId: process.env.DOUYIN_TABLE_ID },
   { name: "今日头条", route: "toutiao",  tableId: process.env.TOUTIAO_TABLE_ID },
-  { name: "知乎",     route: "zhihu",    tableId: process.env.ZHIHU_TABLE_ID },
-  { name: "哔哩哔哩", route: "bilibili", tableId: process.env.BILIBILI_TABLE_ID },
 ];
 
 // ── 工具函数 ──
