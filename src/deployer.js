@@ -5,6 +5,8 @@ const path = require('path');
 const SITES_DIR = '/home/jarvis/sites';
 const NGINX_SITES = '/etc/nginx/sites-available';
 const NGINX_ENABLED = '/etc/nginx/sites-enabled';
+const SSL_CERT = '/etc/letsencrypt/live/mistprism.com-0001/fullchain.pem';
+const SSL_KEY = '/etc/letsencrypt/live/mistprism.com-0001/privkey.pem';
 
 class Deployer {
   constructor() {
@@ -39,7 +41,7 @@ class Deployer {
       await this._deployStatic(subdomain, fqdn, siteDir);
     }
 
-    const url = `http://${fqdn}`;
+    const url = `https://${fqdn}`;
     console.log(`[Deployer] Deployed: ${url}`);
     return { url, subdomain };
   }
@@ -49,12 +51,21 @@ class Deployer {
 server {
     listen 80;
     server_name ${fqdn};
+    return 301 https://\\$host\\$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name ${fqdn};
+
+    ssl_certificate ${SSL_CERT};
+    ssl_certificate_key ${SSL_KEY};
 
     root ${siteDir};
     index index.html;
 
     location / {
-        try_files $uri $uri/ =404;
+        try_files \\$uri \\$uri/ =404;
     }
 }
 `;
@@ -90,13 +101,22 @@ server {
 server {
     listen 80;
     server_name ${fqdn};
+    return 301 https://\\$host\\$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name ${fqdn};
+
+    ssl_certificate ${SSL_CERT};
+    ssl_certificate_key ${SSL_KEY};
 
     location / {
         proxy_pass http://127.0.0.1:${port};
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host \\$host;
+        proxy_set_header X-Real-IP \\$remote_addr;
+        proxy_set_header X-Forwarded-For \\$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \\$scheme;
     }
 }
 `;
