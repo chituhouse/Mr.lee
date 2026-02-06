@@ -30,9 +30,10 @@ class Deployer {
     const fqdn = `${subdomain}.${this.domain}`;
     const siteDir = path.join(SITES_DIR, subdomain);
 
-    // 复制文件到站点目录
+    // 复制文件到站点目录，确保 nginx (www-data) 可读
     fs.mkdirSync(siteDir, { recursive: true });
     execSync(`cp -r ${task.outputDir}/* ${siteDir}/`);
+    execSync(`chmod -R o+r ${siteDir}`);
     console.log(`[Deployer] Files copied to ${siteDir}`);
 
     if (task.type === 'node') {
