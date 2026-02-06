@@ -39,7 +39,7 @@ class Deployer {
       await this._deployStatic(subdomain, fqdn, siteDir);
     }
 
-    const url = `https://${fqdn}`;
+    const url = `http://${fqdn}`;
     console.log(`[Deployer] Deployed: ${url}`);
     return { url, subdomain };
   }
@@ -104,8 +104,11 @@ server {
   }
 
   _writeNginxConf(subdomain, conf) {
+    // 先写到 sites 目录（jarvis 有权限），再 cp 到 nginx
+    const tmpPath = path.join(SITES_DIR, `${subdomain}.conf`);
     const confPath = path.join(NGINX_SITES, `task-${subdomain}`);
-    fs.writeFileSync(confPath, conf);
+    fs.writeFileSync(tmpPath, conf);
+    execSync(`sudo cp ${tmpPath} ${confPath}`);
 
     // 启用站点 + 测试 + 重载
     execSync(`sudo /bin/ln -sf ${confPath} ${NGINX_ENABLED}/task-${subdomain}`);
